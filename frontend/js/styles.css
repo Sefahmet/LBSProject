@@ -1,0 +1,183 @@
+.sliderWrapper {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    top: 0;
+    width: 30%;
+}
+.slidecontainer {
+    padding: 6px 0 16px 0;
+    background: rgba(255, 128, 0, 0.2)
+}
+
+.weightsButton {
+    width: 46%;
+    padding: 8px 16px;
+    font-weight: 800;
+    background-color: rgb(251, 187, 0);
+    color: #0a55a1;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.slider-input {
+    min-width: 100%;
+}
+
+.inputWrapper {
+    text-align: center;
+    font-weight: 800;
+    font-size: 18px;
+}
+
+.label {
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+}
+
+.switch,
+.input:checked + .label .left,
+.input:not(:checked) + .label .right {
+    pointer-events: all;
+    cursor: pointer;
+}
+
+/* most of the stuff below is the same as the W3Schools stuff,
+but modified a bit to reflect changed HTML structure */
+
+.input {
+    display: none;
+}
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 60px;
+    height: 34px;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    -webkit-transition: 0.4s;
+    transition: 0.4s;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 26px;
+    width: 26px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    -webkit-transition: 0.4s;
+    transition: 0.4s;
+}
+
+input:checked + .label .slider {
+    background-color: #2196f3;
+}
+
+input:focus + .label .slider {
+    box-shadow: 0 0 1px #2196f3;
+}
+
+input:checked + .label .slider:before {
+    -webkit-transform: translateX(26px);
+    -ms-transform: translateX(26px);
+    transform: translateX(26px);
+}
+
+.slider.round {
+    border-radius: 34px;
+}
+
+.slider.round:before {
+    border-radius: 50%;
+}
+
+/* styling to make it look like your screenshot */
+
+.left, .right {
+    margin: 0 .5em;
+    font-weight: bold;
+    text-transform: uppercase;
+    font-family: sans-serif;
+    font-size: 20px;
+}
+#legend-container {
+    position: absolute;
+    bottom: 20px; /* Sol alta sabitlenmesi için */
+    left: 20px; /* Sol kenara yakın tut */
+    background: rgba(255, 255, 255, 0.9);
+    padding: 10px;
+    border-radius: 8px;
+    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.2);
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    z-index: 1000;
+    max-width: 250px; /* Boyutu sabit tut */
+}
+
+#legend-container h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+#legend-list {
+    list-style: none;
+    padding: 0;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    margin: 5px 0;
+}
+
+.legend-item img {
+    width: 20px;
+    height: 20px;
+    margin-right: 10px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    margin: 5px 0;
+}
+
+.legend-item img {
+    width: 20px;
+    height: 20px;
+    margin-right: 10px;
+}
+.datetime-container {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    font-family: Arial, sans-serif;
+}
+
+.datetime-container label {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.datetime-container input {
+    padding: 8px;
+    width: 200px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    font-size: 14px;
+    cursor: pointer;
+}

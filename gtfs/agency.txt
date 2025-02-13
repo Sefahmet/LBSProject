@@ -1,0 +1,9 @@
+agency_id,agency_name,agency_url,agency_timezone,agency_lang,agency_phone,agency_fare_url
+1,"KVB Kölner Verkehrs-Betriebe AG",http://www.kvb-koeln.de,Europe/Berlin,de,(02 21) 5 47-0,
+5,"DB DB - Regio AG, Region NRW",http://www.bahn.de/nrw,Europe/Berlin,de,(0 180 6) 464 006,
+6,"SWB Stadtwerke Bonn Verkehrs GmbH",http://www.swb-busundbahn.de/,Europe/Berlin,de,(02 28) 7 11-1,
+8,"RSVG Rhein-Sieg-Verkehrsgesellschaft mbH",http://www.rsvg.de/,Europe/Berlin,de,(0 22 41) 4 99-0,
+12,"RVK Regionalverkehr Köln GmbH NL Meckenheim",http://www.rvk.de/,Europe/Berlin,de,(0 180 6) 13 13 13,
+100,"TR trans regio Deutsche Regionalbahn GmbH",http://www.trans-regio.de,Europe/Berlin,de,(02 61) 98 88 70 70,
+139,"NX National Express Rail GmbH",http://www.nationalexpress.de,Europe/Berlin,de,(0211) 13 999 444,
+123456,"faehre",,,,,
