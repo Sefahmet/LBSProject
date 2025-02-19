@@ -282,35 +282,87 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 });
 
+// async function findShortestPath() {
+//     clearOldLayers();
+//
+//     const [lon1, lat1] = firstCoordInput.value.split(",").map(parseFloat);
+//     const [lon2, lat2] = secondCoordInput.value.split(",").map(parseFloat);
+//
+//     // Kullanıcının seçtiği tarih ve saat bilgisi
+//     const selectedDateTime = document.getElementById("datetime").value;
+//     const dateObj = new Date(selectedDateTime);
+//
+//     const day = dateObj.getDay(); // Haftanın günü (0 = Pazar, 6 = Cumartesi)
+//     const hour = dateObj.getHours().toString().padStart(2, '0');
+//     const minute = dateObj.getMinutes().toString().padStart(2, '0');
+//     const second = dateObj.getSeconds().toString().padStart(2, '0');
+//
+//     const start_time = `${day}:${hour}:${minute}:${second}`;
+//
+//     let url = `${BASE_URL}/shortest-path/?lat1=${lat1}&lon1=${lon1}&lat2=${lat2}&lon2=${lon2}&start_time=${start_time}`;
+//
+//     console.log("Requesting:", url);
+//
+//     const res = await fetch(url);
+//     const data = await res.json();
+//
+//     if (routeMethod !== "multimodalroute" && pathMethod === "singlepath") {
+//         drawPath(data.path);
+//     } else {
+//         drawMultiModalPath(data);
+//     }
+// }
 async function findShortestPath() {
     clearOldLayers();
 
     const [lon1, lat1] = firstCoordInput.value.split(",").map(parseFloat);
     const [lon2, lat2] = secondCoordInput.value.split(",").map(parseFloat);
 
-    // Kullanıcının seçtiği tarih ve saat bilgisi
     const selectedDateTime = document.getElementById("datetime").value;
     const dateObj = new Date(selectedDateTime);
 
-    const day = dateObj.getDay(); // Haftanın günü (0 = Pazar, 6 = Cumartesi)
+    const day = (dateObj.getDay() - 1) % 7; // weekday (0 = Monday, 6 = Sunday)
     const hour = dateObj.getHours().toString().padStart(2, '0');
     const minute = dateObj.getMinutes().toString().padStart(2, '0');
     const second = dateObj.getSeconds().toString().padStart(2, '0');
-
     const start_time = `${day}:${hour}:${minute}:${second}`;
 
-    let url = `${BASE_URL}/shortest-path/?lat1=${lat1}&lon1=${lon1}&lat2=${lat2}&lon2=${lon2}&start_time=${start_time}`;
+    const requestBody = {
+        lat1: lat1,
+        lon1: lon1,
+        lat2: lat2,
+        lon2: lon2,
+        start_time: start_time
+    };
 
-    console.log("Requesting:", url);
+    let url = "";
+    if (routeMethod === "multimodalroute") {
+        if (pathMethod === "alternativepath") {
+            url = `${BASE_URL}/alternative-paths/`;
+        } else {
+            url = `${BASE_URL}/shortest-path/`;
+        }
+    } else {
+        return alert("Please select 'Multimodal Route' to use this feature. This part is not ready yet.");
+    }
 
-    const res = await fetch(url);
+    console.log("Requesting:", url, "with body:", requestBody);
+
+    const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody)
+    });
     const data = await res.json();
 
-    if (routeMethod !== "multimodalroute" && pathMethod === "singlepath") {
-        drawPath(data.path);
+    if (routeMethod === "multimodalroute" && pathMethod === "alternativepath") {
+         altPaths = data; // data: alternatif rotalar dizisi
+         currentAltIndex = 0;
+         displayAlternativePath(currentAltIndex);
     } else {
-        drawMultiModalPath(data);
-    }
+         // Tek rota durumunda
+         drawMultiModalPath(data);
+}
 }
 /************* --------------------- *************/
 
@@ -364,3 +416,29 @@ const createTextStyle = (text) => {
         offsetY: -5  // **Çizginin biraz yukarısına alınması için**
     });
 };
+
+
+/* Fonksiyon: Geçerli alternatif rotayı çizdirir ve legend’i günceller */
+function displayAlternativePath(index) {
+if (!altPaths.length) return;
+// Haritayı temizle
+clearOldLayers();
+// İlgili alternatif rotayı çiz
+drawMultiModalPath(altPaths[index]);
+}
+
+/* Ok butonlarına event listener ekleyin */
+document.getElementById('altPathLeft').addEventListener('click', function () {
+if (!altPaths.length) return;
+// Sol ok: index’i bir azalt, 0’dan küçükse son alternatife geç
+currentAltIndex = (currentAltIndex - 1 + altPaths.length) % altPaths.length;
+displayAlternativePath(currentAltIndex);
+});
+
+document.getElementById('altPathRight').addEventListener('click', function () {
+if (!altPaths.length) return;
+// Sağ ok: index’i bir artır, dizinin sonunu aşarsa başa dön
+currentAltIndex = (currentAltIndex + 1) % altPaths.length;
+displayAlternativePath(currentAltIndex);
+});
+

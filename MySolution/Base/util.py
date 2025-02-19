@@ -25,7 +25,7 @@ def weekSecond2Time(weekSecond):
     minute = (daySecond % (60*60)) // 60
     second = daySecond % 60
     # format : hh%mm
-    formatted = f"{int(hour):02}:{int(minute):02}"
+    formatted = f"{int(hour):02}:{int(minute):02}:{int(second):02}"
     return formatted
 def time2Second(time):
     day,hour, minute, second = map(int, time.split(':'))

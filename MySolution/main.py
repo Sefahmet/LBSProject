@@ -4,6 +4,9 @@ from typing import List, Tuple
 import sys
 import os
 
+from fastapi.middleware.cors import CORSMiddleware
+from sympy.simplify.cse_opts import sub_pre
+
 sys.path.append(os.path.dirname(os.path.abspath("")))
 from MySolution.Entity.PublicTransportationEntities.BaseNode import TransferNode, DepartureNode,ArrivalNode
 from MySolution.Entity.RoadEntities.RoadNode import RoadNode
@@ -11,27 +14,37 @@ from MySolution.Entity.GraphHolder import GraphHolder
 from MySolution.Base.util import latlon2EN, EN2latlon, EN2EN3857, weekSecond2Time, time2Second
 
 app = FastAPI()
+origins = [
+    "http://localhost",
+    "http://localhost:63342",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # API'ye gelen JSON verisini temsil eden model
 class PathRequest(BaseModel):
-    start: Tuple[float, float]  # (lat, lon)
-    end: Tuple[float, float]  # (lat, lon)
-    start_time: str  # Örneğin "0:10:00:00"
+
+    lat1: float
+    lon1: float
+    lat2: float
+    lon2: float
+    start_time: str = "0:10:00:00"
+
+
 
 # 📌 En kısa yolu hesaplayan API
-@app.get("/shortest-path/")
-def get_shortest_path(
-    lat1: float = Query(..., description="Starting latitude"),
-    lon1: float = Query(..., description="Starting longitude"),
-    lat2: float = Query(..., description="Destination latitude"),
-    lon2: float = Query(..., description="Destination longitude"),
-    start_time: str = "0:10:00:00"
-):
+@app.post("/shortest-path/")
+def get_shortest_path(request: PathRequest):
     try:
         # EPSG:4326'dan EPSG:3044'e dönüştür
-        p1 = latlon2EN( lat1,lon1)
-        p2 = latlon2EN( lat2,lon2)
-
+        p1 = latlon2EN(request.lat1, request.lon1)
+        p2 = latlon2EN(request.lat2, request.lon2)
 
         # En yakın düğümleri bul
         graph = GraphHolder.get_graph()
@@ -39,17 +52,104 @@ def get_shortest_path(
         node2 = graph.find_closest_node(p2)
 
         # Dijkstra çalıştır
-        travel_time, path, _, _ = graph.dijkstra(node1, node2, start_time)
-        arrivedTime = weekSecond2Time((time2Second(start_time) + travel_time) % (24*60*60))
+        travel_time, path, _, _ = graph.dijkstra(node1, node2, request.start_time)
+        arrivedTime = weekSecond2Time((time2Second(request.start_time) + travel_time) % (24*60*60))
         returnPath = filterMultiModalPath(path)
         returnPath["distance"] = travel_time
 
-        returnPath['times'][0] = [":".join(start_time.split(":")[1:]),'']
+        returnPath['times'][0] = [":".join(request.start_time.split(":")[1:-1]),'']
         returnPath['times'][-1] = [arrivedTime, '']
         return returnPath
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/alternative-paths/")
+def get_alternative_path(request: PathRequest):
+
+    try:
+        # EPSG:4326'dan EPSG:3044'e dönüştür
+        p1 = latlon2EN(request.lat1, request.lon1)
+        p2 = latlon2EN(request.lat2, request.lon2)
+
+        # En yakın düğümleri bul
+        graph = GraphHolder.get_graph()
+        node1 = graph.find_closest_node(p1)
+        node2 = graph.find_closest_node(p2)
+        paths = [] # first Item is the shortest path, second and third are alternatives (if alternate exists)
+
+        # Dijkstra çalıştır
+        travel_time, path, _, _ = graph.dijkstra(node1, node2, request.start_time)
+        shortest_path = pathToSet(path)
+        arrivedTime = weekSecond2Time((time2Second(request.start_time) + travel_time) % (24 * 60 * 60))
+        returnPath = filterMultiModalPath(path)
+        returnPath["distance"] = travel_time
+
+        returnPath['times'][0] = [":".join(request.start_time.split(":")[1:-1]), '']
+        returnPath['times'][-1] = [arrivedTime, '']
+        paths.append(returnPath)
+        distance = set2Length(shortest_path)
+        generator = graph.bidirectional_search(node1, node2, request.start_time, travel_time * 1.4)
+        while True:
+            e,common = next(generator)
+            alternate1 = pathToSet(e)
+
+            if set2Length(shortest_path & alternate1) / distance < 0.4:
+                break
+        travel_time1, path1, _, _ = graph.dijkstra(node1, graph.nodes[common], request.start_time)
+        time = request.start_time.split(':')[0] + ':'+ weekSecond2Time(time2Second(request.start_time) + travel_time1)
+
+        travel_time2, path2, _, _ = graph.dijkstra(graph.nodes[common], node2, time)
+        travel_time, path = travel_time1+travel_time2, path1+path2[1:]
+        arrivedTime = weekSecond2Time((time2Second(request.start_time) + travel_time) % (24 * 60 * 60))
+        returnPath = filterMultiModalPath(path)
+        returnPath["distance"] = travel_time
+        returnPath['times'][0] = [":".join(request.start_time.split(":")[1:-1]), '']
+        returnPath['times'][-1] = [arrivedTime, '']
+        paths.append(returnPath)
+        shortest_path = shortest_path | alternate1
+        while True:
+            e,common = next(generator)
+            alternate2 = pathToSet(e)
+            if set2Length(shortest_path & alternate2) / distance < 0.4:
+                break
+        travel_time1, path1, _, _ = graph.dijkstra(node1, graph.nodes[common], request.start_time)
+        time = request.start_time.split(':')[0] + ':' + weekSecond2Time(time2Second(request.start_time) + travel_time1)
+        travel_time2, path2, _, _ = graph.dijkstra(graph.nodes[common], node2, time)
+        travel_time, path = travel_time1 + travel_time2, path1 + path2[1:]
+        arrivedTime = weekSecond2Time((time2Second(request.start_time) + travel_time) % (24 * 60 * 60))
+        returnPath = filterMultiModalPath(path)
+        returnPath["distance"] = travel_time
+        returnPath['times'][0] = [":".join(request.start_time.split(":")[1:-1]), '']
+        returnPath['times'][-1] = [arrivedTime, '']
+        paths.append(returnPath)
+        return paths
+
+
+    except StopIteration as e:
+        return paths
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+def pathToSet(path):
+    l = []
+    for subpath in filterMultiModalPath(path)['paths']:
+        l += subpath
+    cSet = set()
+    for i in range(1, len(l)):
+        cSet.add((l[i - 1], l[i]))
+    return cSet
+
+
+def set2Length(path):
+    length = 0
+    for (x1, y1), (x2, y2) in path:
+        length += ((x1 - x2) ** 2 + (y1 - y2) ** 2) ** .5
+    return length
+
+
 
 
 def filterMultiModalPath(path: List):
@@ -116,7 +216,10 @@ def simplifyPath(pathList):
             continue
         else:
             route_name = path[0].route_name
-            type_ = route_type_def[route_types[route_name]]
+            try:
+                type_ = route_type_def[route_types[route_name]]
+            except KeyError:
+                type_ = route_type_def[route_types[route_name.split('/')[0]]]
             tags.append([type_, route_name])
             pathList[i] = [e.coordinate for e in path]
             times.append([path[0].time, path[-1].time])

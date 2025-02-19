@@ -110,38 +110,72 @@ class DiGraph:
         # Önceki düğüm sözlüğünden path oluşturma fonksiyonunuz
         path = self.prev2path(prev, source, target)
         return dist[target.id] - start_time, path, dist, prev
-    # def dijkstra(self,source : Node, target:Node, startTime : str):
-    #     """
-    #
-    #     :param source: source Node
-    #     :param target: target Node
-    #     :param startTime: start time as string in format D:HH:MM:SS, D is the day of the week(0 monday to 6 sunday)
-    #     :return: distance Dictionary and previous Node Dictionary
-    #     """
-    #     nodes = self.nodes
-    #     start_time = self.time2weekSecond(startTime)
-    #     nodesIds = [node.id for node in nodes]
-    #     dist = dict.fromkeys(nodesIds, inf)
-    #     prev = dict.fromkeys(nodesIds, None)
-    #     dist[source.id] = start_time
-    #     queue = []
-    #     heappush(queue, (start_time, source.id))
-    #     while queue:
-    #         current_time, current_node_id = heappop(queue)
-    #
-    #         if current_node_id == target.id:
-    #             break
-    #         if current_time > dist[current_node_id]:
-    #             continue
-    #         for edge in nodes[current_node_id].outgoing_edges:
-    #
-    #             new_time = current_time + edgeWeight(edge, current_time)
-    #             if new_time < dist[edge.target.id]:
-    #                 dist[edge.target.id] = new_time
-    #                 prev[edge.target.id] = current_node_id
-    #                 heappush(queue, (new_time, edge.target.id))
-    #     path = self.prev2path(prev, source, target)
-    #     return dist[target.id] - start_time, path,dist,prev
+
+    def bidirectional_search(self, source, target, startTime, maximumTravelTime):
+        """
+        This Method searches the graph from source to target with bidirectional search
+        when it found a common node on forward and backward search it yields the that common point
+
+        """
+        # source node starts with start time, target node starts with end time
+        start_time = self.time2weekSecond(startTime)
+        end_time = start_time + maximumTravelTime
+
+        nodes = self.nodes
+        nodesIds = [node.id for node in nodes]
+
+        visitedNodesForward = set()
+        visitedNodesBackward = set()
+
+        timeForward = dict.fromkeys(nodesIds, inf)
+        timeBackward = dict.fromkeys(nodesIds, -inf)
+
+        returned = set()
+
+        timeForward[source.id] = start_time
+        timeBackward[target.id] = end_time
+
+        prevForward = dict.fromkeys(nodesIds, None)
+        prevBackward = dict.fromkeys(nodesIds, None)
+
+        queueForward = []
+        queueBackward = []
+
+        heappush(queueForward, (start_time, source.id))
+        heappush(queueBackward, (-end_time, target.id))  # -end_time because we want to pop the largest element
+
+        while queueForward or queueBackward:
+            if queueForward:
+                current_time_forward, current_node_id_forward = heappop(queueForward)
+                visitedNodesForward.add(current_node_id_forward)
+                for edge in nodes[current_node_id_forward].outgoing_edges:
+                    new_time = current_time_forward + edgeWeight(edge, current_time_forward)
+                    if new_time < timeForward[edge.target.id]:
+                        timeForward[edge.target.id] = new_time
+                        prevForward[edge.target.id] = current_node_id_forward
+                        heappush(queueForward, (new_time, edge.target.id))
+            if queueBackward:
+                current_time_backward, current_node_id_backward = heappop(queueBackward)
+                current_time_backward *= -1  # make it positive
+
+                visitedNodesBackward.add(current_node_id_backward)
+                for edge in nodes[current_node_id_backward].incoming_edges:
+                    new_time = current_time_backward - backwards_edge_weight(edge, current_time_backward)
+                    if new_time > timeBackward[edge.source.id]:
+                        timeBackward[edge.source.id] = new_time
+                        prevBackward[edge.source.id] = current_node_id_backward
+                        heappush(queueBackward, (-new_time, edge.source.id))
+
+            commons = (
+                              visitedNodesForward & visitedNodesBackward) - returned  # find the common nodes that are not returned yet
+            for common in commons:
+                returned.add(common)
+                if timeForward[common] <= timeBackward[common]:
+
+                    yield pathFromSourceToTarget(self, prevForward, prevBackward, source.id, target.id, common),common
+
+            if current_time_forward > current_time_backward:
+                break
 
     def prev2path(self,prev, source, target):
         path = []
@@ -165,6 +199,39 @@ def edgeWeight (edge:Edge,currentTime):
         waiting_time = (edge.target.time - new_time)
         if waiting_time < 0:
             waiting_time += 24*60*60*7
+        return waiting_time
+    else:
+        return edge.weight
+
+
+def pathFromSourceToTarget(graph, prevForward, prevBackward, source: int, target: int, commonNode: int):
+    backwardPath = bringPath(prevBackward, target, commonNode)[::-1]
+    forwardPath = bringPath(prevForward, source, commonNode)
+    return [graph.nodes[idx] for idx in forwardPath + backwardPath]
+
+
+def bringPath(prev, source: int, target: int):
+    path = []
+    current = target
+    while current != source:
+        path.append(current)
+        current = prev[current]
+    path.append(source)
+    path.reverse()
+    return path
+
+
+
+
+
+
+def backwards_edge_weight(edge: Edge, currentTime):
+    if isinstance(edge.source, ArrivalNode) and isinstance(edge.target, RoadNode):
+        walking_time = 150  # road üzerindeki yürüme süresi
+        new_time = currentTime - walking_time
+        # Transfer düğümünün zamanına göre bekleme süresi
+        waiting_time = (new_time - edge.source.time) % (24 * 60 * 60 * 7)
+
         return waiting_time
     else:
         return edge.weight

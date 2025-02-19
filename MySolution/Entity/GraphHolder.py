@@ -85,7 +85,8 @@ def create_road_graph_from_shapefile(shapefile_path: str) -> DiGraph:
 
 def createInStationEdges(arrivalNode: ArrivalNode, transferNode: TransferNode, departureNode: DepartureNode,
                          arrivalNode_t: ArrivalNode):
-    # create edge between arrival and departure with weight of departure - arrival
+    # create edge between arrival and depar
+    # ture with weight of departure - arrival
     a2d = Edge(arrivalNode, departureNode, (departureNode.time - arrivalNode.time) % (7 * 24 * 60 * 60))
     arrivalNode.outgoing_edges.append(a2d)
     departureNode.incoming_edges.append(a2d)
